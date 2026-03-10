@@ -1,21 +1,22 @@
 """S3 bucket tool implementations using boto3."""
+import os
 import boto3
 from botocore.exceptions import ClientError
-from app.validators import validate_bucket_name, validate_region, ValidationError
+from app.validators import validate_bucket_name, ValidationError
+
+DEFAULT_REGION = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
 
 
-def _get_s3_client(region: str = "us-east-1"):
-    return boto3.client("s3", region_name=region)
+def _get_s3_client():
+    return boto3.client("s3", region_name=DEFAULT_REGION)
 
 
 def create_s3_bucket(params: dict) -> dict:
     bucket_name = params["bucket_name"]
-    region = params.get("region", "us-east-1")
     public_access = params.get("public_access", False)
     versioning = params.get("versioning", False)
 
     validate_bucket_name(bucket_name)
-    validate_region(region)
 
     if public_access:
         raise ValidationError(
@@ -23,13 +24,13 @@ def create_s3_bucket(params: dict) -> dict:
             "Set public_access to false or omit it."
         )
 
-    s3 = _get_s3_client(region)
+    s3 = _get_s3_client()
 
     try:
         create_args = {"Bucket": bucket_name}
-        if region != "us-east-1":
+        if DEFAULT_REGION != "us-east-1":
             create_args["CreateBucketConfiguration"] = {
-                "LocationConstraint": region
+                "LocationConstraint": DEFAULT_REGION
             }
         s3.create_bucket(**create_args)
 
@@ -53,10 +54,10 @@ def create_s3_bucket(params: dict) -> dict:
         return {
             "success": True,
             "cloud_identifier": bucket_name,
-            "message": f"S3 bucket '{bucket_name}' created in {region}",
+            "message": f"S3 bucket '{bucket_name}' created in {DEFAULT_REGION}",
             "details": {
                 "bucket_name": bucket_name,
-                "region": region,
+                "region": DEFAULT_REGION,
                 "public_access": False,
                 "versioning": versioning,
             },

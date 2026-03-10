@@ -38,7 +38,7 @@ You MUST respond with ONLY a valid JSON object in one of these formats:
    - Instance size hints: "small" = t2.micro or t3.micro, "medium" = t2.small or t3.small, "big/large" = t2.medium or t3.medium
    - If no name given, ask what to name it
    - If purpose is mentioned, suggest appropriate instance types
-5. Default region is us-east-1 unless specified.
+5. Resources are created in the user's default AWS region (configured server-side). Do not ask for or accept a region parameter.
 6. Public S3 access is BLOCKED by security policy. Never set public_access to true.
 7. For resource information questions ("what do I have?", "tell me about my server"), respond with a conversation message summarizing the relevant resources from the list.
 8. Keep responses focused on cloud infrastructure. Be concise and helpful.
@@ -46,7 +46,7 @@ You MUST respond with ONLY a valid JSON object in one of these formats:
 10. CRITICAL - FOLLOW-UP HANDLING: When conversation history shows you previously asked a clarification question, the user's current message is their ANSWER to that question. You MUST use the full context from the previous exchange to complete the ORIGINAL action. Do NOT treat the answer as a new standalone request. Examples:
     - History: you asked "Which bucket to delete?" → User replies "my-logs" → Execute delete_s3_bucket with bucket_name "my-logs"
     - History: you asked "Which instance to stop?" → User replies "web-server" → Execute modify_ec2_instance to stop "web-server"
-    - History: you asked "What region?" → User replies "us-west-2" → Complete the ORIGINAL creation with region us-west-2
+    - History: you asked "What instance type?" → User replies "t2.small" → Complete the ORIGINAL creation with instance_type t2.small
     The user's short reply is ALWAYS an answer to your last question, NOT a new request.
 11. S3 bucket names CANNOT be changed after creation (AWS limitation). If asked to rename an S3 bucket, inform the user this is not possible and suggest creating a new bucket with the desired name and deleting the old one. NEVER call create_s3_bucket when the user asked to rename.
 12. EC2 instance names can be updated by modifying the Name tag. However, the current tools do not support renaming. If asked to rename, inform the user and suggest the alternative. NEVER call create_ec2_instance when the user asked to rename.
@@ -73,13 +73,13 @@ def _get_fallback_tools_text() -> str:
     """Hardcoded fallback if MCP is unreachable during prompt build."""
     return (
         "### create_s3_bucket\n  Create a new private S3 bucket\n"
-        "  Parameters: bucket_name (required), region, versioning\n\n"
+        "  Parameters: bucket_name (required), versioning\n\n"
         "### modify_s3_bucket\n  Modify an S3 bucket\n"
         "  Parameters: bucket_name (required), versioning\n\n"
         "### delete_s3_bucket\n  Delete an S3 bucket\n"
         "  Parameters: bucket_name (required)\n\n"
         "### create_ec2_instance\n  Launch a new EC2 instance\n"
-        "  Parameters: instance_name (required), instance_type, region\n\n"
+        "  Parameters: instance_name (required), instance_type\n\n"
         "### modify_ec2_instance\n  Modify an EC2 instance\n"
         "  Parameters: instance_id (required), action (required: start/stop/change_type), instance_type\n\n"
         "### delete_ec2_instance\n  Terminate an EC2 instance\n"
@@ -336,35 +336,23 @@ def _resolve_followup(
     if is_create:
         # The user reply is likely the missing name or other parameter.
         if is_s3:
-            region_match = re.search(
-                r"(us|eu|ap|sa|ca|me|af)-(east|west|south|north|central|southeast|northeast)-\d",
-                original_user,
-            )
-            region = region_match.group(0) if region_match else "us-east-1"
             return {
                 "type": "tool_call",
                 "tool": "create_s3_bucket",
                 "parameters": {
                     "bucket_name": user_reply,
-                    "region": region,
                     "versioning": "versioning" in original_user,
                 },
             }
         if is_ec2:
             type_match = re.search(r"(t[23]\.(micro|small|medium))", original_user)
             instance_type = type_match.group(1) if type_match else "t2.micro"
-            region_match = re.search(
-                r"(us|eu|ap|sa|ca|me|af)-(east|west|south|north|central|southeast|northeast)-\d",
-                original_user,
-            )
-            region = region_match.group(0) if region_match else "us-east-1"
             return {
                 "type": "tool_call",
                 "tool": "create_ec2_instance",
                 "parameters": {
                     "instance_name": user_reply,
                     "instance_type": instance_type,
-                    "region": region,
                 },
             }
 
@@ -434,15 +422,6 @@ def _fallback_parse(prompt: str, resources: list[dict], conversation_history: li
             "You would need to create a new resource with the desired name and delete the old one.",
         }
 
-    # Extract region
-    region = "us-east-1"
-    region_match = re.search(
-        r"(us|eu|ap|sa|ca|me|af)-(east|west|south|north|central|southeast|northeast)-\d",
-        prompt_lower,
-    )
-    if region_match:
-        region = region_match.group(0)
-
     # Extract quoted or named identifiers
     name_match = re.search(r'(?:called|named|name)\s+["\']?([a-zA-Z0-9_-]+)["\']?', prompt_lower)
     name = name_match.group(1) if name_match else None
@@ -485,7 +464,6 @@ def _fallback_parse(prompt: str, resources: list[dict], conversation_history: li
                 "tool": "create_s3_bucket",
                 "parameters": {
                     "bucket_name": name,
-                    "region": region,
                     "versioning": versioning,
                 },
             }
@@ -534,7 +512,6 @@ def _fallback_parse(prompt: str, resources: list[dict], conversation_history: li
                 "parameters": {
                     "instance_name": name,
                     "instance_type": instance_type,
-                    "region": region,
                 },
             }
         elif is_delete:

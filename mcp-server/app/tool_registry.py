@@ -17,11 +17,6 @@ TOOL_DEFINITIONS = [
                     "type": "string",
                     "description": "Globally unique bucket name (3-63 lowercase chars, digits, hyphens)",
                 },
-                "region": {
-                    "type": "string",
-                    "description": "AWS region (default: us-east-1)",
-                    "default": "us-east-1",
-                },
                 "versioning": {
                     "type": "boolean",
                     "description": "Enable versioning on the bucket",
@@ -77,11 +72,6 @@ TOOL_DEFINITIONS = [
                     "type": "string",
                     "description": "EC2 instance type. Allowed: t2.micro, t2.small, t2.medium, t3.micro, t3.small, t3.medium",
                     "default": "t2.micro",
-                },
-                "region": {
-                    "type": "string",
-                    "description": "AWS region (default: us-east-1)",
-                    "default": "us-east-1",
                 },
                 "ami_id": {
                     "type": "string",

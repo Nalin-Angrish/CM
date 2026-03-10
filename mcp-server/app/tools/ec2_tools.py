@@ -1,40 +1,27 @@
 """EC2 instance tool implementations using boto3."""
+import os
 import boto3
 from botocore.exceptions import ClientError
-from app.validators import validate_region, validate_instance_type, ValidationError
+from app.validators import validate_instance_type, ValidationError
 
-# Default Amazon Linux 2 AMI per region (updated periodically)
-DEFAULT_AMIS = {
-    "us-east-1": "ami-0c02fb55956c7d316",
-    "us-east-2": "ami-074cce78125f09d61",
-    "us-west-1": "ami-04b6c97b14c54de18",
-    "us-west-2": "ami-0892d3c7ee96c0bf7",
-    "eu-west-1": "ami-0d71ea30463e0ff8d",
-    "eu-central-1": "ami-0c9354388bb36c088",
-    "ap-south-1": "ami-0cca134ec43cf708f",
-    "ap-southeast-1": "ami-04ff9e9b51c1f62ca",
-    "ap-northeast-1": "ami-0b7546e839d7ace12",
-}
+DEFAULT_REGION = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
 
 
-def _get_ec2_client(region: str = "us-east-1"):
-    return boto3.client("ec2", region_name=region)
+def _get_ec2_client():
+    return boto3.client("ec2", region_name=DEFAULT_REGION)
 
 
 def create_ec2_instance(params: dict) -> dict:
     instance_name = params["instance_name"]
     instance_type = params.get("instance_type", "t2.micro")
-    region = params.get("region", "us-east-1")
-    ami_id = params.get("ami_id") or DEFAULT_AMIS.get(region, DEFAULT_AMIS["us-east-1"])
 
-    validate_region(region)
     validate_instance_type(instance_type)
 
-    ec2 = _get_ec2_client(region)
+    ec2 = _get_ec2_client()
 
     try:
         response = ec2.run_instances(
-            ImageId=ami_id,
+            ImageId="ami-0f559c3642608c138",
             InstanceType=instance_type,
             MinCount=1,
             MaxCount=1,
@@ -51,13 +38,12 @@ def create_ec2_instance(params: dict) -> dict:
         return {
             "success": True,
             "cloud_identifier": instance_id,
-            "message": f"EC2 instance '{instance_name}' ({instance_id}) launched in {region}",
+            "message": f"EC2 instance '{instance_name}' ({instance_id}) launched in {DEFAULT_REGION}",
             "details": {
                 "instance_id": instance_id,
                 "instance_name": instance_name,
                 "instance_type": instance_type,
-                "region": region,
-                "ami_id": ami_id,
+                "region": DEFAULT_REGION,
                 "state": "pending",
             },
         }
