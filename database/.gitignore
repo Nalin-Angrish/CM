@@ -1,0 +1,18 @@
+# PostgreSQL data
+pgdata/
+postgres_data/
+*.sql.backup
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
