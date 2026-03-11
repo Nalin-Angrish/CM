@@ -12,10 +12,15 @@ The system was designed to be simple to deploy while still supporting practical 
 At the core of the system is a **Large Language Model (LLM)** deployed using **Ollama** that interprets natural language prompts and converts them into structured infrastructure operations. These operations are executed through a **Model Context Protocol (MCP) server**, which defines the available tools, their schemas, and the execution logic for managing cloud resources. By centralizing tool definitions within MCP, the architecture ensures modularity and extensibility, allowing new capabilities to be added without modifying the LLM service.
 
 All components, including the frontend, backend, LLM service, MCP server, and database, are containerized using **Docker**, enabling consistent deployment and simplified setup.
-<!-- 
+
 ## Video Demo
 
-Check out this quick demo to see it in action: [Watch the Demo](https://www.youtube.com/watch?v=dQw4w9WgXcQ) -->
+Check out this quick demo to see it in action:
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=OoTl2go2ShU">
+    <img src="https://img.youtube.com/vi/OoTl2go2ShU/hqdefault.jpg" width="600">
+  </a>
+</p>
 
 ## How It's Built
 
